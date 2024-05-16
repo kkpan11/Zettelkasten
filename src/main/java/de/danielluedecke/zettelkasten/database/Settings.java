@@ -114,7 +114,7 @@ public class Settings {
 	 *         feel
 	 */
 	public boolean isMacStyle() {
-		return PlatformUtil.isMacOS() & getLookAndFeel().contains("Aqua");
+		return getLookAndFeel().contains("Aqua") && PlatformUtil.isMacOS();
 	}
 
 	public boolean isSeaGlass() {
@@ -325,7 +325,7 @@ public class Settings {
 	/**
 	 * get the strings for file descriptions from the resource map
 	 */
-	private final org.jdesktop.application.ResourceMap resourceMap = org.jdesktop.application.Application
+	private org.jdesktop.application.ResourceMap resourceMap = org.jdesktop.application.Application
 			.getInstance(de.danielluedecke.zettelkasten.ZettelkastenApp.class).getContext()
 			.getResourceMap(ZettelkastenView.class);
 
@@ -334,11 +334,6 @@ public class Settings {
 	 * <br>
 	 * We combine several xml-files and compress them into a single zip-container,
 	 * named "zettelkasten-settings.zks3" and "zettelkasten-data.zkd3".
-	 *
-	 * @param ak
-	 * @param ac
-	 * @param syn
-	 * @param stn
 	 */
 	public Settings() {
 		// Init settings file and acceleratorKeys.
@@ -459,11 +454,11 @@ public class Settings {
 	}
 
 	/**
-	 * This method adds the file from the filepath {@code fp} to the list of recent
-	 * documents and rotates that list, if necessary.
+	 * This method adds the file from the filepath {@code fp} to the list 
+         * of recent documents and rotates that list, if necessary.
 	 *
-	 * @param fp the filepath to the document that should be added to the list of
-	 *           recent documents
+	 * @param fp the filepath to the document that should be added to the 
+         *           list of recent documents
 	 */
 	public void addToRecentDocs(String fp) {
 		// check for valid parameter
@@ -556,7 +551,7 @@ public class Settings {
 	}
 
 	/**
-	 * If an entry-number was passed as paramter, use this method to store the
+	 * If an entry-number was passed as parameter, use this method to store the
 	 * entry-number, so the entry can be displayed immediately after opening a data
 	 * file. Use -1 to indicate that no parameter-entry-number should be set
 	 *

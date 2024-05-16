@@ -30,7 +30,6 @@
  * Sie sollten ein Exemplar der GNU General Public License zusammen mit diesem Programm 
  * erhalten haben. Falls nicht, siehe <http://www.gnu.org/licenses/>.
  */
-
 package de.danielluedecke.zettelkasten;
 
 import de.danielluedecke.zettelkasten.database.Settings;
@@ -41,11 +40,15 @@ import de.danielluedecke.zettelkasten.database.Synonyms;
 import de.danielluedecke.zettelkasten.database.TasksData;
 import de.danielluedecke.zettelkasten.util.Constants;
 import de.danielluedecke.zettelkasten.util.FileOperationsUtil;
+import java.awt.Frame;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Locale;
+import java.util.Properties;
+import java.util.Set;
 import java.util.logging.*;
 
 import org.jdesktop.application.Application;
@@ -57,184 +60,238 @@ import javax.swing.*;
  * The main class of the application.
  */
 public class ZettelkastenApp extends SingleFrameApplication {
-	private ByteArrayOutputStream inMemorySessionLog = new ByteArrayOutputStream(2000);
-	private Settings settings;
-	private AcceleratorKeys accKeys;
-	private AutoKorrektur autoKorrekt;
-	private Synonyms synonyms;
-	private StenoData steno;
-	private TasksData taskData;
-	String[] params;
 
-	private FileHandler createFileLogHandler() {
-		try {
-			// Create logging file handler that will split the log into up to 3 files with a
-			// file size limit of 100Kb. It won't append to existing files, so each session
-			// starts a separate file.
-			FileHandler fh = new FileHandler(FileOperationsUtil.getZettelkastenHomeDir() + "zknerror%g.log", 102400, 3,
-					false);
-			fh.setFormatter(new SimpleFormatter());
-			return fh;
-		} catch (IOException | SecurityException ex) {
-			Constants.zknlogger.log(Level.SEVERE, ex.getLocalizedMessage());
-			return null;
-		}
-	}
+    private ByteArrayOutputStream inMemorySessionLog = new ByteArrayOutputStream(2000);
+    private Settings settings;
+    private AcceleratorKeys accKeys;
+    private AutoKorrektur autoKorrekt;
+    private Synonyms synonyms;
+    private StenoData steno;
+    private TasksData taskData;
+    String[] params;
 
-	private void initLocale(Settings settings) {
-		String languageFromSettings = settings.getLanguage();
+    private FileHandler createFileLogHandler() {
+        try {
+            // Create logging file handler that will split the log into up to 3 files with a
+            // file size limit of 100Kb. It won't append to existing files, so each session
+            // starts a separate file.
+            FileHandler fh = new FileHandler(FileOperationsUtil.getZettelkastenHomeDir() + "zknerror%g.log", 102400, 3,
+                    false);
+            fh.setFormatter(new SimpleFormatter());
+            return fh;
+        } catch (IOException | SecurityException ex) {
+            Constants.zknlogger.log(Level.SEVERE, ex.getLocalizedMessage());
+            return null;
+        }
+    }
 
-		// Init supported locales.
-		String englishCountryCode = new Locale("en", "", "").getLanguage();
-		String germanCountryCode = new Locale("de", "", "").getLanguage();
-		String spanishCountryCode = new Locale("es", "", "").getLanguage();
-		String portugueseCountryCode = new Locale("pt", "", "").getLanguage();
+    private void initLocale(Settings settings) {
+        String languageFromSettings = settings.getLanguage();
 
-		// Defaults to English.
-		Locale newLocale = new Locale("en", "GB");
+        // Init supported locales.
+        String englishCountryCode = new Locale("en", "", "").getLanguage();
+        String germanCountryCode = new Locale("de", "", "").getLanguage();
+        String spanishCountryCode = new Locale("es", "", "").getLanguage();
+        String portugueseCountryCode = new Locale("pt", "", "").getLanguage();
 
-		if (languageFromSettings.equals(englishCountryCode))
-			newLocale = new Locale("en", "GB");
-		if (languageFromSettings.equals(germanCountryCode))
-			newLocale = new Locale("de", "DE");
-		if (languageFromSettings.equals(spanishCountryCode))
-			newLocale = new Locale("es", "ES");
-		if (languageFromSettings.equals(portugueseCountryCode))
-			newLocale = new Locale("pt", "BR");
+        // Defaults to English.
+        Locale newLocale = new Locale("en", "GB");
 
-		Locale.setDefault(newLocale);
-	}
+        if (languageFromSettings.equals(englishCountryCode)) {
+            newLocale = new Locale("en", "GB");
+        }
+        if (languageFromSettings.equals(germanCountryCode)) {
+            newLocale = new Locale("de", "DE");
+        }
+        if (languageFromSettings.equals(spanishCountryCode)) {
+            newLocale = new Locale("es", "ES");
+        }
+        if (languageFromSettings.equals(portugueseCountryCode)) {
+            newLocale = new Locale("pt", "BR");
+        }
 
-	private void updateSettingsWithCommandLineParams(String[] params) {
-		// Check params for:
-		// - data file (first param that ends with .zkn3).
-		// - initial entry number (first param that is a valid number)
-		for (String param : params) {
-			// Is param a data file?
-			if (param.toLowerCase().endsWith(Constants.ZKN_FILEEXTENSION)) {
-				File file = new File(param);
-				if (file.exists()) {
-					Constants.zknlogger.log(Level.INFO,
-							"Setting data file to '{0}' from the Zettelkasten command line arguments.",
-							file.toString());
-					settings.setMainDataFile(file);
-					break;
-				}
-			}
-			// Is param a number?
-			try {
-				int initalZettellNr = Integer.parseInt(param);
-				if (initalZettellNr > 0) {
-					settings.setInitialParamZettel(initalZettellNr);
-					Constants.zknlogger.log(Level.INFO,
-							"Setting initial entry number to '{0}' from the Zettelkasten command line arguments.",
-							initalZettellNr);
-					break;
-				}
-			} catch (NumberFormatException ex) {
-			}
-		}
-	}
+        Locale.setDefault(newLocale);
+    }
+    
+     private void logSystemProperties(String[] args) {
+        Properties props = System.getProperties();
+        Set<Object> keys = props.keySet();
+        for (Object key : keys) {
+            String keyStr = (String) key;
+            String value = props.getProperty(keyStr);
+            Constants.zknlogger.log(Level.INFO, "System property: {0}={1}", new Object[]{keyStr, value});
+        }
+    }
 
-	/**
-	 * At startup create and show the main frame of the application.
-	 */
-	@Override
-	protected void startup() {
-		configureLogger(Constants.zknlogger);
-		initializeTaskData();
-		initializeSettings();
-		initializeLocale();
-		showMainWindow();
-	}
+    private void updateSettingsWithCommandLineParams(String[] params) {
+        //logSystemProperties(params);
 
-	void configureLogger(Logger logger) {
-		logger.setLevel(Level.ALL);
-		StreamHandler sHandler = new StreamHandler(inMemorySessionLog, new SimpleFormatter());
-		logger.addHandler(sHandler);
-		FileHandler fh = createFileLogHandler();
-		if (fh != null) {
-			logger.addHandler(fh);
-		}
-	}
+        for (String param : params) {
+            processCommandLineParameter(param);
+        }
+    }
 
-	 void initializeTaskData() {
-		taskData = new TasksData();
-	 }
+    private void processCommandLineParameter(String param) {
+        Constants.zknlogger.log(Level.INFO, "Processing command line parameter: {0}", param);
 
-	void initializeSettings() {
-		settings = new Settings();
-		//updateSettingsWithCommandLineParams(params);
-	}
+        if (param.toLowerCase().endsWith(Constants.ZKN_FILEEXTENSION)) {
+            processAsDataFile(param);
+        } else {
+            try {
+                processAsInitialEntryNumber(param);
+            } catch (NumberFormatException ex) {
+                Constants.zknlogger.log(Level.WARNING, "Invalid command line parameter: {0}. Skipping.", param);
+            }
+        }
+    }
 
-	void initializeLocale() {
-		initLocale(settings);
-	}
+    private void processAsDataFile(String param) {
+        File file = new File(param);
+        if (file.exists()) {
+            Constants.zknlogger.log(Level.INFO, 
+                    "Setting data file to {0} from the command line arguments.", 
+                    file.toString());
+            settings.setMainDataFile(file);
+        } else {
+            Constants.zknlogger.log(Level.WARNING, "Data file does not exist: '{0}'. Skipping.", param);
+        }
+    }
 
-	void showMainWindow() {
-		try {
-			logStartingMainWindow();
-			validateSettings();
-			createMainWindow();
-		} catch (IllegalArgumentException e) {
-			handleMainWindowException(e);
-		}
-	}
+    private void processAsInitialEntryNumber(String param) {
+        int initialZettellNr = Integer.parseInt(param);
+        if (initialZettellNr > 0) {
+            settings.setInitialParamZettel(initialZettellNr);
+            Constants.zknlogger.log(Level.INFO,
+                    "Setting initial entry number to {0} from the command line arguments.",
+                    initialZettellNr); // Passing initialZettellNr as an argument
+        } else {
+            Constants.zknlogger.log(Level.WARNING, "Initial entry number is not positive: {0}. Skipping.", initialZettellNr);
+        }
+    }
 
-	void logStartingMainWindow() {
-		Constants.zknlogger.log(Level.INFO, "Starting Main Window.");
-	}
+    /**
+     * At startup create and show the main frame of the application.
+     */
+    @Override
+    protected void startup() {
+        configureLogger(Constants.zknlogger);
+        initializeTaskData();
+        initializeSettings();
+        initializeLocale();
+        showMainWindow();
+    }
 
-	void validateSettings() {
-		//TODO use default settings
-		if (settings == null) throw new IllegalArgumentException("Settings cannot be null.");
-	}
+    public Logger getLogger() {
+        return Constants.zknlogger;
+    }
 
-	void createMainWindow() {
-		try {
-            // Get the main frame of the application
-            JFrame mainFrame = getMainFrame();
+    public TasksData getTaskData() {
+        return taskData;
+    }
 
-            // Create an instance of ZettelkastenView
-            ZettelkastenView zettelkastenView = new ZettelkastenView(this, settings, taskData);
+    public Settings getSettings() {
+        return settings;
+    }
 
-            show(zettelkastenView);
-        } catch (ClassNotFoundException | UnsupportedLookAndFeelException | InstantiationException
-                | IllegalAccessException | IOException e) {
+    public Locale getLocale() {
+        return Locale.getDefault();
+    }
+
+    /**
+     * Check if the main window is visible.
+     *
+     * @return true if the main window is visible, false otherwise.
+     */
+    public boolean isMainWindowVisible() {
+        Frame mainFrame = getMainFrame();
+        return mainFrame != null && mainFrame.isVisible();
+    }
+
+    void configureLogger(Logger logger) {
+        logger.setLevel(Level.ALL);
+        StreamHandler sHandler = new StreamHandler(inMemorySessionLog, new SimpleFormatter());
+        logger.addHandler(sHandler);
+        FileHandler fh = createFileLogHandler();
+        if (fh != null) {
+            logger.addHandler(fh);
+        }
+    }
+
+    void initializeTaskData() {
+        taskData = new TasksData();
+    }
+
+    void initializeSettings() {
+        settings = new Settings();
+        updateSettingsWithCommandLineParams(params);
+    }
+
+    void initializeLocale() {
+        initLocale(settings);
+    }
+
+    void showMainWindow() {
+        try {
+            logStartingMainWindow();
+            validateSettings();
+            createMainWindow();
+        } catch (IllegalArgumentException e) {
+            handleMainWindowException(e);
+        }
+    }
+    
+    void logStartingMainWindow() {
+        Constants.zknlogger.log(Level.INFO, "Starting Main Window.");
+    }
+    
+    /**
+     * @see Settings#resetSettings()
+     */
+    void validateSettings() {
+        //TODO use default settings
+        if (settings == null) {
+            Settings settings = new Settings();
+            settings.initDefaultSettingsIfMissing();
+        }
+    }
+
+    void createMainWindow() {
+        try {
+            show(new ZettelkastenView(this, settings, taskData));
+        } catch (ClassNotFoundException | UnsupportedLookAndFeelException | InstantiationException | IllegalAccessException | IOException e) {
             handleMainWindowException(e);
         }
     }
 
-	private void handleMainWindowException(Exception e) {
-		e.printStackTrace();
-	}
+    private void handleMainWindowException(Exception e) {
+        e.printStackTrace();
+    }
 
+    /**
+     * A convenient static getter for the application instance.
+     *
+     * @return the instance of ZettelkastenApp
+     */
+    public static ZettelkastenApp getApplication() {
+        return Application.getInstance(ZettelkastenApp.class);
+    }
 
-	/**
-	 * A convenient static getter for the application instance.
-	 * 
-	 * @return the instance of ZettelkastenApp
-	 */
-	public static ZettelkastenApp getApplication() {
-		return Application.getInstance(ZettelkastenApp.class);
-	}
+    public ByteArrayOutputStream getCurrentSessionLogs() {
+        return inMemorySessionLog;
+    }
 
-	public ByteArrayOutputStream getCurrentSessionLogs() {
-		return inMemorySessionLog;
-	}
+    /**
+     * Main method launching the application.
+     *
+     * @param args
+     */
+    public static void main(String[] args) {
+        launch(ZettelkastenApp.class, args);
+    }
 
-	/**
-	 * Main method launching the application.
-	 * 
-	 * @param args
-	 */
-	public static void main(String[] args) {
-		launch(ZettelkastenApp.class, args);
-	}
-
-	@Override
-	protected void initialize(String[] args) {
-		this.params = args;
-		super.initialize(args);
-	}
+    @Override
+    protected void initialize(String[] args) {
+        this.params = args;
+        super.initialize(args);
+    }
 }
